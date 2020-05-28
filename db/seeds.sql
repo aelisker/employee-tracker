@@ -20,3 +20,18 @@ VALUES
   ('Traditional Marketing', 72000, 5),
   ('In House Accountant', 85000, 6),
   ('Financial Analyst', 80000, 6);
+
+INSERT INTO employee (first_name, last_name, role_id, manager_id)
+VALUES
+  ('Bob', 'Smith', 1, 2),
+  ('Jane', 'Smith', 2, NULL),
+  ('Igor', 'Oliver', 3, 4),
+  ('Jane', 'Fonda', 4, NULL),
+  ('Darlene', 'Alderson', 5, NULL),
+  ('Elliot', 'Alderson', 6, NULL),
+  ('Gordon', 'Clark', 6, NULL),
+  ('Toby', 'Flenderson', 7, NULL),
+  ('Anna', 'Scott', 8, 9),
+  ('Kyle', 'Nguyen', 9, NULL),
+  ('Tenzin', 'Gylapo', 10, NULL),
+  ('Jack', 'Ryan', 11, NULL);
