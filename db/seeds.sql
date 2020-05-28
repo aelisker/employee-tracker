@@ -31,7 +31,7 @@ VALUES
   ('Elliot', 'Alderson', 6, NULL),
   ('Gordon', 'Clark', 6, NULL),
   ('Toby', 'Flenderson', 7, NULL),
-  ('Anna', 'Scott', 8, 9),
+  ('Anna', 'Scott', 8, 10),
   ('Kyle', 'Nguyen', 9, NULL),
   ('Tenzin', 'Gylapo', 10, NULL),
   ('Jack', 'Ryan', 11, NULL);
