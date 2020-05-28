@@ -1,8 +1,8 @@
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
-const cTable = require('console.table');
-const {viewDepartments, viewRoles} = require('./utils/queryFunctions');
+// const {viewDepartments, viewRoles} = require('./utils/queryFunctions');
 const pw = require('./utils/mysqlPassword');
+const cTable = require('console.table');
 
 const connection = mysql.createConnection({
   host: 'localhost',
@@ -58,8 +58,21 @@ async function beginPrompt() {
         console.log('Updating an Employee');
         break;
     }
+    console.log('Switch End');
   });
 }; 
 
+async function viewDepartments () {
+  console.log('View Dept Success');
+  const sql = 'SELECT * FROM department';
+  await connection.query(sql, (err, row) => {
+    if (err) {
+      console.log(`Error: ${err}`);
+      return;
+    }
+    console.table(row);
+    return;
+  });
+};
 
 beginPrompt();
