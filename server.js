@@ -18,7 +18,8 @@ async function startingPrompt() {
         'Add a Department',
         'Add a Role',
         'Add an Empoyee',
-        'Update an Employee Role'
+        'Update an Employee Role',
+        'Exit and Save Database'
       ]
     }
   ])
@@ -42,12 +43,16 @@ async function startingPrompt() {
         break;
       case 'Add a Role':
         console.log('Adding a Role');
+        addRole();
         break;
       case 'Add an Employee':
         console.log('Adding an Employee');
         break;
       case 'Update an Employee Role':
         console.log('Updating an Employee');
+        break;
+      case 'Exit and Save Database':
+        endConnection();
         break;
     }
   });
@@ -122,6 +127,68 @@ async function addDepartment () {
         return;
       });
     })
+};
+
+async function addRole () {
+  const roleSql = `SELECT name FROM department;`;
+  connection.promise().query(roleSql, (err, row) => {
+    console.log(row);
+    inquirer
+    .prompt([
+      {
+        type: 'input',
+        message: 'What is the name of the new role?',
+        name: 'newRoleName',
+        validate: roleName => {
+          if (roleName) return true;
+          else {
+            console.log('You must enter a role name!');
+            return false;
+          }
+        }
+      },
+      {
+        type: 'input',
+        message: 'What is the salary of the new role?',
+        name: 'newRoleSalary',
+        validate: roleSalary => {
+          if (!isNaN(roleSalary) && roleSalary) return true;
+          else {
+            console.log('You must enter a role salary as a number!');
+            return false;
+          }
+        }
+      },
+      {
+        type: 'list',
+        message: 'What department does this role belong to?',
+        name: 'newRoleDept',
+        choices: () => {
+          const choices = row.map(choice => choice.name);
+          return choices;
+        }
+        
+      }
+    ])
+    .then(selection => {
+      const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+      connection.promise().query(sql, (err, row) => {
+        if (err) {
+          console.log(`Error: ${err}`);
+          return;
+        }
+        startingPrompt();
+        return;
+      });
+    })
+  })
+};
+
+async function endConnection() {
+  await connection.end(err => {
+    if (err) throw err;
+    console.log('Succesfully saved your database.');
+  });
 };
 
 startingPrompt();
