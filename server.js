@@ -45,7 +45,7 @@ async function startingPrompt() {
         break;
       case 'Add an Employee':
         console.log('Adding an Employee');
-        addEmpoyeePrep();
+        addEmployee();
         break;
       case 'Update an Employee Role':
         console.log('Updating an Employee');
@@ -213,9 +213,105 @@ async function addEmpoyeePrep() {
   });
 };
 
-async function addEmployee (roles, managers) {
-  console.log(roles);
-  console.log(managers);
+// async function addEmployee (roles, managers) {
+//   console.log(roles);
+//   console.log(managers);
+//   inquirer
+//     .prompt([
+//       {
+//         type: 'input',
+//         message: 'What is the new employee\'s first name?',
+//         name: 'newEmpFirstName',
+//         validate: firstName => {
+//           if (firstName) return true;
+//           else {
+//             console.log('You must enter a first name!');
+//             return false;
+//           }
+//         }
+//       },
+//       {
+//         type: 'input',
+//         message: 'What is the new employee\'s last name?',
+//         name: 'newEmpLastName',
+//         validate: lastName => {
+//           if (lastName) return true;
+//           else {
+//             console.log('You must enter a last name!');
+//             return false;
+//           }
+//         }
+//       },
+//       {
+//         type: 'list',
+//         message: 'What is this employee\'s role?',
+//         name: 'newEmpRole',
+//         choices: [...roles]
+//       },
+//       {
+//         type: 'list',
+//         message: 'Does this employee have a manager? If so, who?',
+//         name: 'newEmpManager',
+//         choices: ['None', ...managers]
+//       }
+//     ])
+//     .then(selection => {
+//       let sql;
+//       if (selection.newEmpManager === 'None') {
+//         sql = `INSERT INTO employee (first_name, last_name, role_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'))`;
+//       } else {
+//         sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'), (SELECT e.id FROM employee e LEFT JOIN employee m ON e.manager_id = m.id WHERE CONCAT(e.first_name, ' ', e.last_name) = '${selection.newEmpManager}'))`;
+//       }
+
+//       connection.promise().query(sql, (err, row) => {
+//         if (err) {
+//           console.log(`Error: ${err}`);
+//           return;
+//         }
+//         startingPrompt();
+//         return;
+//       });
+//     })
+// };
+
+async function getRoleTitles() {
+  const sql = 'SELECT title FROM role';
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      const roleArr = [];
+      row.forEach(role => {
+        roleArr.push(role.title);
+      });
+      resolve(roleArr);
+    });
+  })
+};
+
+
+async function getManagerNames() {
+  const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      const managerArr = [];
+      row.forEach(name => {
+        managerArr.push(name.manager);
+      });
+      resolve(managerArr);
+    });
+  })
+};
+
+async function addEmployee () {
+  const roles = await getRoleTitles();
+  const managers = await getManagerNames();
   inquirer
     .prompt([
       {
@@ -335,11 +431,10 @@ async function asyncGetManagerNames() {
       row.forEach(name => {
         managerArr.push(name.manager);
       });
-      // addEmployee(managerArr);
-      // console.log(managerArr);
       resolve(managerArr);
     });
   })
+};
   
   // return connection.promise().query(sql, (err, row) => {
   //   if (err) {
@@ -354,7 +449,6 @@ async function asyncGetManagerNames() {
   //   // console.log(managerArr);
   //   return managerArr;
   // });
-};
 
 
 async function endConnection() {
