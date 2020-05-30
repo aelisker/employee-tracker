@@ -45,11 +45,10 @@ async function startingPrompt() {
         break;
       case 'Add an Employee':
         console.log('Adding an Employee');
-        addEmployee();
+        addEmpoyeePrep();
         break;
       case 'Update an Employee Role':
         console.log('Updating an Employee');
-        addEmpoyeePrep();
         break;
       case 'Exit and Save Database':
         endConnection();
@@ -185,62 +184,37 @@ async function addRole () {
 };
 
 async function addEmpoyeePrep() {
-  const potentialRoles = await getRoleTitles();
-  const potentialManagers = await getManagerNames();
-  console.log(potentialManagers);
+  const roleSql = 'SELECT title FROM role';
+  const managerSql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
 
-  await addEmployee(potentialRoles, potentialManagers);
-};
+  const roleArr = [];
+  const managerArr = [];
 
-async function getRoleTitles () {
-  const sql = 'SELECT title FROM role';
-  connection.promise().query(sql, (err, row) => {
+  await connection.promise().query(roleSql, (err, row) => {
     if (err) {
       console.log(`Error: ${err}`);
       return;
     }
-    const roleArr = [];
+
     row.forEach(role => {
       roleArr.push(role.title);
     });
-    return roleArr;
-  });
-};
-
-async function getManagerNames() {
-  const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
-  connection.promise().query(sql, (err, row) => {
-    if (err) {
-      console.log(`Error: ${err}`);
-      return;
-    }
-    const managerArr = [];
-    row.forEach(name => {
-      managerArr.push(name.manager);
-    });
-    // addEmployee(managerArr);
-    return managerArr;
-  });
-};
-
-async function getManagerNames() {
-  const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
-  connection.promise().query(sql, (err, row) => {
-    if (err) {
-      console.log(`Error: ${err}`);
-      return;
-    }
-    const managerArr = [];
-    row.forEach(name => {
-      managerArr.push(name.manager);
-    });
-    addEmployee(managerArr);
+      connection.promise().query(managerSql, (err, row) => {
+        if (err) {
+          console.log(`Error: ${err}`);
+          return;
+        }
+        row.forEach(name => {
+          managerArr.push(name.manager);
+        });
+        addEmployee(roleArr, managerArr);
+      });
   });
 };
 
 async function addEmployee (roles, managers) {
-  // const manager = await getManagerNames();
-  // console.log(manager);
+  console.log(roles);
+  console.log(managers);
   inquirer
     .prompt([
       {
@@ -281,7 +255,13 @@ async function addEmployee (roles, managers) {
       }
     ])
     .then(selection => {
-      const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+      let sql;
+      if (selection.newEmpManager === 'None') {
+        sql = `INSERT INTO employee (first_name, last_name, role_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'))`;
+      } else {
+        sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'), (SELECT e.id FROM employee e LEFT JOIN employee m ON e.manager_id = m.id WHERE CONCAT(e.first_name, ' ', e.last_name) = '${selection.newEmpManager}'))`;
+      }
+
       connection.promise().query(sql, (err, row) => {
         if (err) {
           console.log(`Error: ${err}`);
