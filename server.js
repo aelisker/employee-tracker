@@ -307,7 +307,7 @@ async function asyncAddEmployee () {
         type: 'list',
         message: 'What is this employee\'s role?',
         name: 'newEmpRole',
-        choices: [manager.map(choice => choice)]
+        choices: [...manager]
       }
     ])
     .then(selection => {
@@ -325,19 +325,35 @@ async function asyncAddEmployee () {
 
 async function asyncGetManagerNames() {
   const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
-  connection.promise().query(sql, (err, row) => {
-    if (err) {
-      console.log(`Error: ${err}`);
-      return;
-    }
-    const managerArr = [];
-    row.forEach(name => {
-      managerArr.push(name.manager);
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      const managerArr = [];
+      row.forEach(name => {
+        managerArr.push(name.manager);
+      });
+      // addEmployee(managerArr);
+      // console.log(managerArr);
+      resolve(managerArr);
     });
-    // addEmployee(managerArr);
-    console.log(managerArr);
-    return managerArr;
-  });
+  })
+  
+  // return connection.promise().query(sql, (err, row) => {
+  //   if (err) {
+  //     console.log(`Error: ${err}`);
+  //     return;
+  //   }
+  //   const managerArr = [];
+  //   row.forEach(name => {
+  //     managerArr.push(name.manager);
+  //   });
+  //   // addEmployee(managerArr);
+  //   // console.log(managerArr);
+  //   return managerArr;
+  // });
 };
 
 
