@@ -1,5 +1,4 @@
 const inquirer = require('inquirer');
-// const { viewDepartments, viewRoles, viewEmployees } = require('./utils/queryFunctions');
 const cTable = require('console.table');
 const connection = require('./db/db');
 
@@ -14,10 +13,9 @@ async function startingPrompt() {
         'View all Departments',
         'View all Roles',
         'View all Employees',
-        'Add an Employee',
         'Add a Department',
         'Add a Role',
-        'Add an Empoyee',
+        'Add an Employee',
         'Update an Employee Role',
         'Exit and Save Database'
       ]
@@ -47,9 +45,11 @@ async function startingPrompt() {
         break;
       case 'Add an Employee':
         console.log('Adding an Employee');
+        addEmployee();
         break;
       case 'Update an Employee Role':
         console.log('Updating an Employee');
+        addEmpoyeePrep();
         break;
       case 'Exit and Save Database':
         endConnection();
@@ -183,6 +183,182 @@ async function addRole () {
     })
   })
 };
+
+async function addEmpoyeePrep() {
+  const potentialRoles = await getRoleTitles();
+  const potentialManagers = await getManagerNames();
+  console.log(potentialManagers);
+
+  await addEmployee(potentialRoles, potentialManagers);
+};
+
+async function getRoleTitles () {
+  const sql = 'SELECT title FROM role';
+  connection.promise().query(sql, (err, row) => {
+    if (err) {
+      console.log(`Error: ${err}`);
+      return;
+    }
+    const roleArr = [];
+    row.forEach(role => {
+      roleArr.push(role.title);
+    });
+    return roleArr;
+  });
+};
+
+async function getManagerNames() {
+  const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
+  connection.promise().query(sql, (err, row) => {
+    if (err) {
+      console.log(`Error: ${err}`);
+      return;
+    }
+    const managerArr = [];
+    row.forEach(name => {
+      managerArr.push(name.manager);
+    });
+    // addEmployee(managerArr);
+    return managerArr;
+  });
+};
+
+async function getManagerNames() {
+  const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
+  connection.promise().query(sql, (err, row) => {
+    if (err) {
+      console.log(`Error: ${err}`);
+      return;
+    }
+    const managerArr = [];
+    row.forEach(name => {
+      managerArr.push(name.manager);
+    });
+    addEmployee(managerArr);
+  });
+};
+
+async function addEmployee (roles, managers) {
+  // const manager = await getManagerNames();
+  // console.log(manager);
+  inquirer
+    .prompt([
+      {
+        type: 'input',
+        message: 'What is the new employee\'s first name?',
+        name: 'newEmpFirstName',
+        validate: firstName => {
+          if (firstName) return true;
+          else {
+            console.log('You must enter a first name!');
+            return false;
+          }
+        }
+      },
+      {
+        type: 'input',
+        message: 'What is the new employee\'s last name?',
+        name: 'newEmpLastName',
+        validate: lastName => {
+          if (lastName) return true;
+          else {
+            console.log('You must enter a last name!');
+            return false;
+          }
+        }
+      },
+      {
+        type: 'list',
+        message: 'What is this employee\'s role?',
+        name: 'newEmpRole',
+        choices: [...roles]
+      },
+      {
+        type: 'list',
+        message: 'Does this employee have a manager? If so, who?',
+        name: 'newEmpManager',
+        choices: ['None', ...managers]
+      }
+    ])
+    .then(selection => {
+      const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+      connection.promise().query(sql, (err, row) => {
+        if (err) {
+          console.log(`Error: ${err}`);
+          return;
+        }
+        startingPrompt();
+        return;
+      });
+    })
+};
+
+// async function addEmployee () {
+//   const manager = await getManagerNames();
+//   console.log(manager);
+//   inquirer
+//     .prompt([
+//       {
+//         type: 'input',
+//         message: 'What is the new employee\'s first name?',
+//         name: 'newEmpFirstName',
+//         validate: firstName => {
+//           if (firstName) return true;
+//           else {
+//             console.log('You must enter a first name!');
+//             return false;
+//           }
+//         }
+//       },
+//       {
+//         type: 'input',
+//         message: 'What is the new employee\'s last name?',
+//         name: 'newEmpLastName',
+//         validate: lastName => {
+//           if (lastName) return true;
+//           else {
+//             console.log('You must enter a last name!');
+//             return false;
+//           }
+//         }
+//       },
+//       {
+//         type: 'list',
+//         message: 'What is this employee\'s role?',
+//         name: 'newEmpRole',
+//         choices: [manager.map(choice => choice)]
+//       }
+//     ])
+//     .then(selection => {
+//       const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+//       connection.promise().query(sql, (err, row) => {
+//         if (err) {
+//           console.log(`Error: ${err}`);
+//           return;
+//         }
+//         startingPrompt();
+//         return;
+//       });
+//     })
+// };
+
+// async function getManagerNames() {
+//   const sql = `SELECT CONCAT(first_name, '\ '\, last_name) AS manager FROM employee`;
+//   connection.promise().query(sql, (err, row) => {
+//     if (err) {
+//       console.log(`Error: ${err}`);
+//       return;
+//     }
+//     const managerArr = [];
+//     row.forEach(name => {
+//       managerArr.push(name.manager);
+//     });
+//     // addEmployee(managerArr);
+//     console.log(managerArr);
+//     return managerArr;
+//   });
+// };
+
 
 async function endConnection() {
   await connection.end(err => {
