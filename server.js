@@ -21,6 +21,7 @@ async function startingPrompt() {
       ]
     }
   ])
+  // choose function based on prompt response
   .then(choice => {
     switch (choice.userChoice) {
       case 'View all Departments':
@@ -141,6 +142,7 @@ async function viewDepartments () {
       console.log(`Error: ${err}`);
       return;
     }
+    // use cTable to view formatted response
     console.table(row);
     startingPrompt();
     return;
@@ -149,6 +151,7 @@ async function viewDepartments () {
 
 // view all roles and department they belong to
 async function viewRoles () {
+  // join department and roles to show parent department for role
   const sql = 'SELECT title, salary, department.name FROM role LEFT JOIN department ON department_id = department.id';
   connection.promise().query(sql, (err, row) => {
     if (err) {
@@ -163,7 +166,7 @@ async function viewRoles () {
 
 // view all employees, their managers, departments, and roles
 async function viewAllEmployees () {
-  // found information on inserting manager from https://stackoverflow.com/questions/7451761/how-to-get-the-employees-with-their-managers
+  // found information on self joins https://stackoverflow.com/questions/7451761/how-to-get-the-employees-with-their-managers
   const sql = 'SELECT e.id, e.first_name, e.last_name, role.title, department.name, role.salary, CONCAT(m.first_name,\' \', m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id LEFT JOIN role ON e.role_id = role.id LEFT JOIN department ON role.department_id = department.id';
   connection.promise().query(sql, (err, row) => {
     if (err) {
@@ -178,6 +181,7 @@ async function viewAllEmployees () {
 
 // view all employees by chosen department
 async function viewEmployeesByDepartment () {
+  // use async await to wait for promise response, then proceed
   const deptName = await getDeptNamesAndValues();
   inquirer
   .prompt([
@@ -185,10 +189,12 @@ async function viewEmployeesByDepartment () {
       type: 'list',
       message: 'View employees by which department?',
       name: 'deptIdShowingName',
+      // use spread to populate array with values from deptName
       choices: ['None', ...deptName]
     }
   ])
   .then(selection => {
+    // if user selects none, do not feed that value into query
     if (selection.deptIdShowingName === 'None') {
       startingPrompt();
       return;
@@ -221,6 +227,7 @@ async function viewEmployeesByManager () {
     }
   ])
   .then(selection => {
+    // to check employees with no manager, use IS NULL. for everything else, use else query
     let sql;
     if (selection.managerIdByName === 'None') {
       sql = `SELECT CONCAT(first_name, ' ', last_name) AS employee FROM employee WHERE manager_id IS NULL`;
@@ -231,7 +238,9 @@ async function viewEmployeesByManager () {
       if (err) {
         console.log(`Error: ${err}`);
         return;
-      } else if (row.length === 0) {
+      } 
+      // if there is nowthing in response array, employee doesn't manage anybody
+      if (row.length === 0) {
         console.log('This person manages nobody!');
         startingPrompt();
         return;
@@ -247,6 +256,8 @@ async function viewEmployeesByManager () {
 // get role titles, return as promise
 async function getRoleTitles() {
   const sql = 'SELECT title FROM role';
+  // method shown during office hours. before this, I was trying to return the roleArr on it's own without returning who connection as promise
+  // allows this to be called with await in another async function
   return new Promise((resolve, reject) => {
     return connection.query(sql, (err, row) => {
       if (err) {
@@ -271,7 +282,7 @@ async function getEmployeeNamesAndValues() {
         console.log(`Error: ${err}`);
         return reject(err);
       }
-      // Method was shown during office hours
+      // Method was shown during office hours. before this, was using subqueries every time. this is much better
       const empArr = row.map(emp => {
         const empChoice = {name: (emp.first_name + ' ' + emp.last_name), value: emp.id};
         return empChoice;
@@ -290,7 +301,6 @@ async function getDeptNamesAndValues() {
         console.log(`Error: ${err}`);
         return reject(err);
       }
-      // Method was shown during office hours
       const deptArr = row.map(dept => {
         const deptChoice = {name: dept.name, value: dept.id};
         return deptChoice;
@@ -325,6 +335,7 @@ async function addDepartment () {
           console.log(`Error: ${err}`);
           return;
         }
+        console.log('Department added!');
         startingPrompt();
         return;
       });
@@ -369,6 +380,7 @@ async function addRole () {
   ])
   .then(selection => {
     const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, ${selection.newRoleDeptValueBasedOnName})`;
+    // below is example of query using subquery used before I learned method to assign id value to array
     // const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
 
     connection.promise().query(sql, (err, row) => {
@@ -376,6 +388,7 @@ async function addRole () {
         console.log(`Error: ${err}`);
         return;
       }
+      console.log('Role added!');
       startingPrompt();
       return;
     });
@@ -438,6 +451,7 @@ async function addEmployee () {
           console.log(`Error: ${err}`);
           return;
         }
+        console.log('Employee added!');
         startingPrompt();
         return;
       });
@@ -470,6 +484,7 @@ async function updateEmployeeRole () {
         console.log(`Error: ${err}`);
         return;
       }
+      console.log('Role updated!');
       startingPrompt();
       return;
     });
@@ -492,6 +507,7 @@ async function updateEmployeeManager () {
       message: 'Who is this empoyee\'s manager?',
       name: 'newEmpManager',
       choices: ['None', ...employee]
+      // was trying to get this to work to ensure employee isn't own manager. couldn't get working within inquirer prompts, so used next code block to handle
       // validate: choice => {
       //   if (choice === empIdBasedOnConcatName || choice === choice.empIdBasedOnConcatName) {
       //     console.log('An employee cannot be his or her own manager!');
@@ -548,6 +564,7 @@ async function deleteEmployee () {
           console.log(`Error: ${err}`);
           return;
         }
+        console.log('Employee deleted!');
         startingPrompt();
         return;
       });
