@@ -12,11 +12,10 @@ async function startingPrompt() {
       choices: [
         'View all Departments',
         'View all Roles',
-        'View all Employees',
+        'View Employees',
         'Add a Department',
         'Add a Role',
-        'Add an Employee',
-        'Update an Employee Role',
+        'Modify Employees',
         'Exit and Save Database'
       ]
     }
@@ -31,8 +30,8 @@ async function startingPrompt() {
         console.log('Viewing all Roles');
         viewRoles();
         break;
-      case 'View all Employees':
-        console.log('Viewing all Employees');
+      case 'View Employees':
+        console.log('Viewing Employees');
         viewEmployees();
         break;
       case 'Add a Department':
@@ -43,16 +42,89 @@ async function startingPrompt() {
         console.log('Adding a Role');
         addRole();
         break;
+      case 'Modify Employees':
+        console.log('How would you like to Modify Employees?');
+        modifyEmployee();
+        break;
+      case 'Exit and Save Database':
+        endConnection();
+        break;
+    }
+  });
+}; 
+
+async function viewEmployees() {
+  return inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'What would you like to do?',
+      name: 'userChoice',
+      choices: [
+        'View all Employees',
+        'View Employee by Manager',
+        'View Employee by Department',
+        'Go back'
+      ]
+    }
+  ])
+  .then(choice => {
+    switch (choice.userChoice) {
+      case 'View all Employees':
+        console.log('Viewing all Employees');
+        viewAllEmployees();
+        break;
+      case 'View Employee by Manager':
+        console.log('Viewing Employees by Manager');
+        viewEmployeesByManager();
+        break;
+      case 'View Employee by Department':
+        console.log('Viewing Employees by Department');
+        viewEmployeesByDepartment();
+        break;
+      case 'Go back':
+        startingPrompt();
+        break;
+    }
+  });
+}
+
+async function modifyEmployee() {
+  return inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'What would you like to do?',
+      name: 'userChoice',
+      choices: [
+        'Add an Employee',
+        'Update an Employee\'s Role',
+        'Update an Employee\'s Manager',
+        'Delete an Employee',
+        'Go back'
+      ]
+    }
+  ])
+  .then(choice => {
+    switch (choice.userChoice) {
       case 'Add an Employee':
         console.log('Adding an Employee');
         addEmployee();
         break;
-      case 'Update an Employee Role':
+      case 'Update an Employee\'s Role':
         console.log('Updating an Employee');
         updateEmployeeRole();
         break;
-      case 'Exit and Save Database':
-        endConnection();
+      case 'Update an Employee\'s Manager':
+        console.log('Updating Employee\'s Manager');
+        updateEmployeeManager();
+        break;
+      case 'Delete an Employee':
+        console.log('Deleting Employee');
+        deleteEmployee();
+        break;
+      case 'Go back':
+        startingPrompt();
         break;
     }
   });
@@ -84,7 +156,7 @@ async function viewRoles () {
   });
 };
 
-async function viewEmployees () {
+async function viewAllEmployees () {
   // found information on inserting manager from https://stackoverflow.com/questions/7451761/how-to-get-the-employees-with-their-managers
   const sql = 'SELECT e.id, e.first_name, e.last_name, role.title, department.name, role.salary, CONCAT(m.first_name,\' \', m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id LEFT JOIN role ON e.role_id = role.id LEFT JOIN department ON role.department_id = department.id';
   connection.promise().query(sql, (err, row) => {
@@ -96,6 +168,37 @@ async function viewEmployees () {
     startingPrompt();
     return;
   });
+};
+
+async function viewEmployeesByDepartment () {
+  const deptName = await getDeptNamesAndValues();
+  inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'View employees by which department?',
+      name: 'deptIdShowingName',
+      choices: ['None', ...deptName]
+    }
+  ])
+  .then(selection => {
+    if (selection.deptIdShowingName === 'None') {
+      startingPrompt();
+      return;
+    } else {
+      console.log(selection.deptIdShowingName);
+      const sql = `SELECT CONCAT(first_name, ' ', last_name) AS employee, department.name FROM employee LEFT JOIN role ON employee.role_id = role.id LEFT JOIN department ON role.department_id = department.id WHERE department_id = ${selection.deptIdShowingName}`;
+      connection.promise().query(sql, (err, row) => {
+        if (err) {
+          console.log(`Error: ${err}`);
+          return;
+        }
+        console.table(row);
+        startingPrompt();
+        return;
+      });
+    }
+  })
 };
 
 async function addDepartment () {
@@ -141,6 +244,24 @@ async function getDeptNames() {
       const deptArr = [];
       row.forEach(dept => {
         deptArr.push(dept.name);
+      });
+      resolve(deptArr);
+    });
+  })
+};
+
+async function getDeptNamesAndValues() {
+  const sql = `SELECT * FROM department`;
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      // Method was shown during office hours
+      const deptArr = row.map(dept => {
+        const deptChoice = {name: dept.name, value: dept.id};
+        return deptChoice;
       });
       resolve(deptArr);
     });
@@ -325,6 +446,83 @@ async function updateEmployeeRole () {
       startingPrompt();
       return;
     });
+  })
+};
+
+async function updateEmployeeManager () {
+  const employee = await getEmployeeNamesAndValues();
+  inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'Which employee is being reassigned?',
+      name: 'empIdBasedOnConcatName',
+      choices: [...employee]
+    },
+    {
+      type: 'list',
+      message: 'Who is this empoyee\'s manager?',
+      name: 'newEmpManager',
+      choices: ['None', ...employee],
+      validate: choice => {
+        if (choice === empIdBasedOnConcatName || choice === choice.empIdBasedOnConcatName) {
+          console.log('An employee cannot be his or her own manager!');
+          console.log (choice);
+          console.log(empIdBasedOnConcatName);
+          return false;
+        } else {
+          console.log (choice);
+          console.log(empIdBasedOnConcatName);;
+          return true;
+        }
+      }
+    }
+  ])
+  .then(selection => {
+    let sql;
+      if (selection.newEmpManager === 'None') {
+        sql = `UPDATE employee SET manager_id = NULL WHERE id = ${selection.empIdBasedOnConcatName}`;
+      } else {
+        sql = `UPDATE employee SET manager_id = ${selection.newEmpManager} WHERE id = ${selection.empIdBasedOnConcatName}`;
+      }
+
+    connection.promise().query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return;
+      }
+      startingPrompt();
+      return;
+    });
+  })
+};
+
+async function deleteEmployee () {
+  const employee = await getEmployeeNamesAndValues();
+  inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'Which employee would you like to delete?',
+      name: 'empIdBasedOnConcatName',
+      choices: ['None', ...employee]
+    }
+  ])
+  .then(selection => {
+    if (selection.empIdBasedOnConcatName === 'None') {
+      startingPrompt();
+      return;
+    } else {
+      const sql = `DELETE FROM employee WHERE id = ${selection.empIdBasedOnConcatName}`;
+      connection.promise().query(sql, (err, row) => {
+        if (err) {
+          console.log(`Error: ${err}`);
+          return;
+        }
+        startingPrompt();
+        return;
+      });
+    }
   })
 };
 
