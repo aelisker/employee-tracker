@@ -403,7 +403,6 @@ async function addEmployee () {
         sql = `INSERT INTO employee (first_name, last_name, role_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'))`;
       } else {
         sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ('${selection.newEmpFirstName}', '${selection.newEmpLastName}', (SELECT id FROM role WHERE title = '${selection.newEmpRole}'), ${selection.newEmpManager})`;
-        // (SELECT e.id FROM employee e LEFT JOIN employee m ON e.manager_id = m.id WHERE CONCAT(e.first_name, ' ', e.last_name) = '${selection.newEmpManager}')
       }
 
       connection.promise().query(sql, (err, row) => {
@@ -457,30 +456,29 @@ async function updateEmployeeManager () {
       type: 'list',
       message: 'Which employee is being reassigned?',
       name: 'empIdBasedOnConcatName',
-      choices: [...employee]
+      choices: [...employee],
     },
     {
       type: 'list',
       message: 'Who is this empoyee\'s manager?',
       name: 'newEmpManager',
-      choices: ['None', ...employee],
-      validate: choice => {
-        if (choice === empIdBasedOnConcatName || choice === choice.empIdBasedOnConcatName) {
-          console.log('An employee cannot be his or her own manager!');
-          console.log (choice);
-          console.log(empIdBasedOnConcatName);
-          return false;
-        } else {
-          console.log (choice);
-          console.log(empIdBasedOnConcatName);;
-          return true;
-        }
-      }
+      choices: ['None', ...employee]
+      // validate: choice => {
+      //   if (choice === empIdBasedOnConcatName || choice === choice.empIdBasedOnConcatName) {
+      //     console.log('An employee cannot be his or her own manager!');
+      //     return false;
+      //   } else {
+      //     return true;
+      //   }
+      // }
     }
   ])
   .then(selection => {
     let sql;
       if (selection.newEmpManager === 'None') {
+        sql = `UPDATE employee SET manager_id = NULL WHERE id = ${selection.empIdBasedOnConcatName}`;
+      } else if(selection.newEmpManager === selection.empIdBasedOnConcatName) {
+        console.log('An employee cannot be his or her own manager! Setting value to NULL.');
         sql = `UPDATE employee SET manager_id = NULL WHERE id = ${selection.empIdBasedOnConcatName}`;
       } else {
         sql = `UPDATE employee SET manager_id = ${selection.newEmpManager} WHERE id = ${selection.empIdBasedOnConcatName}`;
