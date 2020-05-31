@@ -2,6 +2,7 @@ const inquirer = require('inquirer');
 const cTable = require('console.table');
 const connection = require('./db/db');
 
+// this is the prompt list where we start
 async function startingPrompt() {
   return inquirer
   .prompt([
@@ -31,7 +32,7 @@ async function startingPrompt() {
         viewRoles();
         break;
       case 'View Employees':
-        console.log('Viewing Employees');
+        console.log('How would you like to view employees?');
         viewEmployees();
         break;
       case 'Add a Department':
@@ -53,6 +54,7 @@ async function startingPrompt() {
   });
 }; 
 
+// this is where we select how we would like to view employees
 async function viewEmployees() {
   return inquirer
   .prompt([
@@ -89,6 +91,7 @@ async function viewEmployees() {
   });
 }
 
+// this is where the user chooses how to modify an employee
 async function modifyEmployee() {
   return inquirer
   .prompt([
@@ -130,6 +133,7 @@ async function modifyEmployee() {
   });
 }; 
 
+// view all departments
 async function viewDepartments () {
   const sql = 'SELECT * FROM department';
   connection.promise().query(sql, (err, row) => {
@@ -143,6 +147,7 @@ async function viewDepartments () {
   });
 };
 
+// view all roles and department they belong to
 async function viewRoles () {
   const sql = 'SELECT title, salary, department.name FROM role LEFT JOIN department ON department_id = department.id';
   connection.promise().query(sql, (err, row) => {
@@ -156,6 +161,7 @@ async function viewRoles () {
   });
 };
 
+// view all employees, their managers, departments, and roles
 async function viewAllEmployees () {
   // found information on inserting manager from https://stackoverflow.com/questions/7451761/how-to-get-the-employees-with-their-managers
   const sql = 'SELECT e.id, e.first_name, e.last_name, role.title, department.name, role.salary, CONCAT(m.first_name,\' \', m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id LEFT JOIN role ON e.role_id = role.id LEFT JOIN department ON role.department_id = department.id';
@@ -170,6 +176,7 @@ async function viewAllEmployees () {
   });
 };
 
+// view all employees by chosen department
 async function viewEmployeesByDepartment () {
   const deptName = await getDeptNamesAndValues();
   inquirer
@@ -201,6 +208,99 @@ async function viewEmployeesByDepartment () {
   })
 };
 
+// view all employees by selected manager
+async function viewEmployeesByManager () {
+  const managerName = await getEmployeeNamesAndValues();
+  inquirer
+  .prompt([
+    {
+      type: 'list',
+      message: 'View employees by which manager?',
+      name: 'managerIdByName',
+      choices: ['None', ...managerName]
+    }
+  ])
+  .then(selection => {
+    let sql;
+    if (selection.managerIdByName === 'None') {
+      sql = `SELECT CONCAT(first_name, ' ', last_name) AS employee FROM employee WHERE manager_id IS NULL`;
+    } else {
+      sql = `SELECT CONCAT(first_name, ' ', last_name) AS employee FROM employee WHERE manager_id = ${selection.managerIdByName}`;
+    }
+    connection.promise().query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return;
+      } else if (row.length === 0) {
+        console.log('This person manages nobody!');
+        startingPrompt();
+        return;
+      } else {
+        console.table(row);
+        startingPrompt();
+        return;
+      }  
+    });
+  });
+};
+
+// get role titles, return as promise
+async function getRoleTitles() {
+  const sql = 'SELECT title FROM role';
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      const roleArr = [];
+      row.forEach(role => {
+        roleArr.push(role.title);
+      });
+      resolve(roleArr);
+    });
+  })
+};
+
+// get employee names, return id as promise
+async function getEmployeeNamesAndValues() {
+  const sql = `SELECT * FROM employee`;
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      // Method was shown during office hours
+      const empArr = row.map(emp => {
+        const empChoice = {name: (emp.first_name + ' ' + emp.last_name), value: emp.id};
+        return empChoice;
+      });
+      resolve(empArr);
+    });
+  })
+};
+
+// get department names, return id as promise
+async function getDeptNamesAndValues() {
+  const sql = `SELECT * FROM department`;
+  return new Promise((resolve, reject) => {
+    return connection.query(sql, (err, row) => {
+      if (err) {
+        console.log(`Error: ${err}`);
+        return reject(err);
+      }
+      // Method was shown during office hours
+      const deptArr = row.map(dept => {
+        const deptChoice = {name: dept.name, value: dept.id};
+        return deptChoice;
+      });
+      resolve(deptArr);
+    });
+  })
+};
+
+// add new department
 async function addDepartment () {
   inquirer
     .prompt([
@@ -225,89 +325,15 @@ async function addDepartment () {
           console.log(`Error: ${err}`);
           return;
         }
-        console.table(row);
         startingPrompt();
         return;
       });
     })
 };
 
-// get role titles, return as promise
-async function getDeptNames() {
-  const sql = `SELECT name FROM department`;
-  return new Promise((resolve, reject) => {
-    return connection.query(sql, (err, row) => {
-      if (err) {
-        console.log(`Error: ${err}`);
-        return reject(err);
-      }
-      const deptArr = [];
-      row.forEach(dept => {
-        deptArr.push(dept.name);
-      });
-      resolve(deptArr);
-    });
-  })
-};
-
-async function getDeptNamesAndValues() {
-  const sql = `SELECT * FROM department`;
-  return new Promise((resolve, reject) => {
-    return connection.query(sql, (err, row) => {
-      if (err) {
-        console.log(`Error: ${err}`);
-        return reject(err);
-      }
-      // Method was shown during office hours
-      const deptArr = row.map(dept => {
-        const deptChoice = {name: dept.name, value: dept.id};
-        return deptChoice;
-      });
-      resolve(deptArr);
-    });
-  })
-};
-
-// get role titles, return as promise
-async function getRoleTitles() {
-  const sql = 'SELECT title FROM role';
-  return new Promise((resolve, reject) => {
-    return connection.query(sql, (err, row) => {
-      if (err) {
-        console.log(`Error: ${err}`);
-        return reject(err);
-      }
-      const roleArr = [];
-      row.forEach(role => {
-        roleArr.push(role.title);
-      });
-      resolve(roleArr);
-    });
-  })
-};
-
-// get employee names, return as promise
-async function getEmployeeNamesAndValues() {
-  const sql = `SELECT * FROM employee`;
-  return new Promise((resolve, reject) => {
-    return connection.query(sql, (err, row) => {
-      if (err) {
-        console.log(`Error: ${err}`);
-        return reject(err);
-      }
-      // Method was shown during office hours
-      const empArr = row.map(emp => {
-        const empChoice = {name: (emp.first_name + ' ' + emp.last_name), value: emp.id};
-        return empChoice;
-      });
-      resolve(empArr);
-    });
-  })
-};
-
-// await promise response from getDeptNames, use spread to populate choices
+// await promise response from getDeptNamesAndValues, use spread to populate choices
 async function addRole () {
-  const deptNames = await getDeptNames();
+  const deptNames = await getDeptNamesAndValues();
   inquirer
   .prompt([
     {
@@ -337,12 +363,14 @@ async function addRole () {
     {
       type: 'list',
       message: 'What department does this role belong to?',
-      name: 'newRoleDept',
+      name: 'newRoleDeptValueBasedOnName',
       choices: [...deptNames]
     }
   ])
   .then(selection => {
-    const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+    const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, ${selection.newRoleDeptValueBasedOnName})`;
+    // const sql = `INSERT INTO role (title, salary, department_id) VALUES ('${selection.newRoleName}', ${selection.newRoleSalary}, (SELECT id FROM department WHERE name = '${selection.newRoleDept}'))`;
+
     connection.promise().query(sql, (err, row) => {
       if (err) {
         console.log(`Error: ${err}`);
@@ -416,7 +444,7 @@ async function addEmployee () {
     })
 };
 
-// await promise response from getDeptNames, use spread to populate choices
+// await promise response from getRoleTitles, use spread to populate choices
 async function updateEmployeeRole () {
   const employee = await getEmployeeNamesAndValues();
   const roles = await getRoleTitles();
@@ -448,6 +476,7 @@ async function updateEmployeeRole () {
   })
 };
 
+// update the manager of an employee
 async function updateEmployeeManager () {
   const employee = await getEmployeeNamesAndValues();
   inquirer
@@ -475,6 +504,7 @@ async function updateEmployeeManager () {
   ])
   .then(selection => {
     let sql;
+    // if person selects none, set value to null. if they select employee as own manager, give message and also set null
       if (selection.newEmpManager === 'None') {
         sql = `UPDATE employee SET manager_id = NULL WHERE id = ${selection.empIdBasedOnConcatName}`;
       } else if(selection.newEmpManager === selection.empIdBasedOnConcatName) {
@@ -495,6 +525,7 @@ async function updateEmployeeManager () {
   })
 };
 
+// delete an employee
 async function deleteEmployee () {
   const employee = await getEmployeeNamesAndValues();
   inquirer
@@ -524,6 +555,7 @@ async function deleteEmployee () {
   })
 };
 
+// safely end connection
 async function endConnection() {
   await connection.end(err => {
     if (err) throw err;
@@ -531,4 +563,5 @@ async function endConnection() {
   });
 };
 
+// call starting prompt
 startingPrompt();
